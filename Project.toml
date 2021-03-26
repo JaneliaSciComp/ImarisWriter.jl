@@ -1,13 +1,11 @@
 name = "ImarisWriter"
 uuid = "7685c673-c356-4b9b-8b22-c9f5550fdd46"
 authors = ["Mark Kittisopikul <kittisopikulm@janelia.hhmi.org> and contributors"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
-HDF5_jll = "0234f1f7-429e-5d53-9886-15a909be8d59"
+ImarisWriter_jll = "9166e923-c553-51e5-a193-8d969705fd83"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
-Lz4_jll = "5ced341a-0733-55b8-9ab6-a4889d929147"
-Zlib_jll = "83775a58-1f1d-513f-b197-d71354ab007a"
 
 [compat]
 julia = "1"
