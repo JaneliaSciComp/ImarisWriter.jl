@@ -269,6 +269,7 @@ struct bpConverterTypesC_Color
     mGreen::Cfloat
     mBlue::Cfloat
     mAlpha::Cfloat
+    bpConverterTypesC_Color(mRed=1.0f0, mGreen=1.0f0, mBlue=1.0f0, mAlpha=1.0f0) = new(mRed, mGreen, mBlue, mAlpha)
 end
 const Color = bpConverterTypesC_Color
 
@@ -307,7 +308,7 @@ ColorInfo(
     mOpacity, mRangeMin, mRangeMax, mGammaCorrection)
 
 ColorInfo(
-    mBaseColor::bpConverterTypesC_Color;
+    mBaseColor::bpConverterTypesC_Color = Color();
     mOpacity = 0,
     mRangeMin = 0,
     mRangeMax = 255,

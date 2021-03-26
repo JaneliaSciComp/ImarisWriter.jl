@@ -94,8 +94,8 @@ module SimpleTestProgram
 
         Test with progress callback. Complex.
     """
-    function testConvert(aTestIndex = 0)
-        println("testConvert($aTestIndex)")
+    function testConvert(aTestIndex = 0; minimalMetadata = false)
+        println("testConvert($aTestIndex; minimalMetadata = $minimalMetadata)")
 
         # Setup callback
         cond = Base.AsyncCondition()
@@ -107,7 +107,7 @@ module SimpleTestProgram
         t = @async callbackTask(cond, aCallbackUserData)
 
         #Start actual program, preserving cond and aCallbackUserData from garbage collection
-        GC.@preserve cond aCallbackUserData testConvertActual(aTestIndex, aCallbackUserData)
+        GC.@preserve cond aCallbackUserData testConvertActual(aTestIndex, aCallbackUserData; minimalMetadata)
 
         # Clean up callback
         progressCallbackActual(aCallbackUserData[])
@@ -120,7 +120,7 @@ module SimpleTestProgram
 
         Test program without progress callback. Simpler.
     """
-    function testConvertActual(aTestIndex = 0, aCallbackUserData = C_NULL)
+    function testConvertActual(aTestIndex = 0, aCallbackUserData = C_NULL; minimalMetadata = false)
         ### Setup
 
         aDataType = UInt8
@@ -187,44 +187,50 @@ module SimpleTestProgram
 
         ### Write Metadata
 
-        vNumberOfOtherSections = 1
-        vNumberOfSections = vNumberOfOtherSections + aImageSize.mValueC
-        vParameterSections = Vector{ParameterSection}(undef,vNumberOfSections)
-        vUnitParameter = Parameter("Unit", "um")
-        vImageSection = ParameterSection("Image", vUnitParameter)
-        vParameterSections[1] = vImageSection
-        vNumberOfParametersPerChannel = 3
-        for vC = 1:aImageSize.mValueC
-            vChannelParameters = Vector{Parameter}(undef, vNumberOfParametersPerChannel)
-            vChannelParameters[1] = Parameter("Name", vC == 0 ? "First channel" : vC == 1 ? "Second channel" : vC == 2 ? "Third channel" : "Other channel")
-            vChannelParameters[2] = Parameter("LSMEmissionWavelength", "700")
-            vChannelParameters[3] = Parameter("OtherChannelParameter", "OtherChannelValue")
-            vParameterSections[vNumberOfOtherSections + vC] = ParameterSection("Channel $vC", vChannelParameters)
-        end
+        if !minimalMetadata
 
-        #aParameters = bpConverterTypesC_Parameters(vParameterSections, vNumberOfSections)
+            vNumberOfOtherSections = 1
+            vNumberOfSections = vNumberOfOtherSections + aImageSize.mValueC
+            vParameterSections = Vector{ParameterSection}(undef,vNumberOfSections)
+            vUnitParameter = Parameter("Unit", "um")
+            vImageSection = ParameterSection("Image", vUnitParameter)
+            vParameterSections[1] = vImageSection
+            vNumberOfParametersPerChannel = 3
+            for vC = 1:aImageSize.mValueC
+                vChannelParameters = Vector{Parameter}(undef, vNumberOfParametersPerChannel)
+                vChannelParameters[1] = Parameter("Name", vC == 0 ? "First channel" : vC == 1 ? "Second channel" : vC == 2 ? "Third channel" : "Other channel")
+                vChannelParameters[2] = Parameter("LSMEmissionWavelength", "700")
+                vChannelParameters[3] = Parameter("OtherChannelParameter", "OtherChannelValue")
+                vParameterSections[vNumberOfOtherSections + vC] = ParameterSection("Channel $vC", vChannelParameters)
+            end
 
-        vTimeInfos = Vector{TimeInfo}(undef,aImageSize.mValueT)
-        for vT = 1:aImageSize.mValueT
-            vSeconds = vT + 4 + 60 * (27 + 60 *15)
-            vTimeInfos[vT] = TimeInfo( 2458885, vSeconds * 1_000_000_000 )
-        end
-        # Convert vTimesInfos to a pointer
-        #aTimeInfoPerTimePoint = bpConverterTypesC_TimeInfos(vTimeInfos,  aImageSize.mValueT)
+            #aParameters = bpConverterTypesC_Parameters(vParameterSections, vNumberOfSections)
 
-        vColorInfos = Vector{ColorInfo}(undef, aImageSize.mValueC)
-        for vC = 1:aImageSize.mValueC
-            vColorInfos[vC] = ColorInfo(
-                Color(
-                    (vC - 1 % 3) == 0 ? 1 : 0, # mRed
-                    (vC - 1 % 3) == 1 ? 1 : 0, # mGreen
-                    (vC - 1 % 3) == 2 ? 1 : 0, # mBlue
-                    1
-                ) # mBaseColor
-            )
+            vTimeInfos = Vector{TimeInfo}(undef,aImageSize.mValueT)
+            for vT = 1:aImageSize.mValueT
+                vSeconds = vT + 4 + 60 * (27 + 60 *15)
+                vTimeInfos[vT] = TimeInfo( 2458885, vSeconds * 1_000_000_000 )
+            end
+            # Convert vTimesInfos to a pointer
+            #aTimeInfoPerTimePoint = bpConverterTypesC_TimeInfos(vTimeInfos,  aImageSize.mValueT)
+
+            vColorInfos = Vector{ColorInfo}(undef, aImageSize.mValueC)
+            for vC = 1:aImageSize.mValueC
+                vColorInfos[vC] = ColorInfo(
+                    Color(
+                        (vC - 1 % 3) == 0 ? 1 : 0, # mRed
+                        (vC - 1 % 3) == 1 ? 1 : 0, # mGreen
+                        (vC - 1 % 3) == 2 ? 1 : 0, # mBlue
+                        1
+                    ) # mBaseColor
+                )
+            end
+        else
+            # Minimal Metadata requires the next four lines
+            vParameterSections = ParameterSection[]
+            vTimeInfos = TimeInfo[]
+            vColorInfos = fill(ColorInfo(), aImageSize.mValueC)
         end
-        # Make vColorInfos into a pointer
-        #aColorInfoPerChannel = bpConverterTypesC_ColorInfos(vColorInfos, aImageSize.mValueC)
 
         aAutoAdjustColorRange = true
 
@@ -234,13 +240,14 @@ module SimpleTestProgram
         )
         ImarisWriter.checkErrors(vConverter)
 
+        # This is really important, file will not be written until this is called
         ImarisWriter.destroy(vConverter)
 
     end
 
     function __init__()
         testConvert(0)
-        testConvert(1)
+        testConvert(1; minimalMetadata = true)
         println("No callback test")
         testConvertActual(2)
     end
